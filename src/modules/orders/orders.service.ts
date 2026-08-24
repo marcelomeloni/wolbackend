@@ -1,11 +1,11 @@
-import { supabase } from '../../lib/supabase';
+﻿import { supabase } from '../../lib/supabase';
 import { z } from 'zod';
 import { createOrderSchema, updateOrderStatusSchema } from './orders.schema';
 
 export class OrdersService {
   static async createOrder(userId: string, data: z.infer<typeof createOrderSchema>) {
     let subtotalAmount = 0;
-    const orderItemsToInsert = [];
+    const orderItemsToInsert: any[] = [];
 
     for (const item of data.items) {
       subtotalAmount += item.unitPrice * item.quantity;
@@ -44,7 +44,7 @@ export class OrdersService {
       }
     }
 
-    const shippingAmount = 25.0; // Fixo para simulação
+    const shippingAmount = 25.0; // Fixo para simulaÃ§Ã£o
     const totalAmount = subtotalAmount - discountAmount + shippingAmount;
 
     let finalAddressId = data.addressId;
@@ -127,7 +127,7 @@ export class OrdersService {
     const { data: result, error } = await supabase.from('orders').update(updatePayload).eq('id', orderId).select().single();
     if (error) throw new Error(error.message);
 
-    if (data.paymentStatus === 'approved' && order.payment_status !== 'approved') {
+    if (data.paymentStatus === 'PAID' && order.payment_status !== 'PAID') {
       for (const item of order.order_items) {
         if (item.product_variant_id) {
           const { data: variant } = await supabase.from('product_variants').select('product_id').eq('id', item.product_variant_id).single();
@@ -144,3 +144,6 @@ export class OrdersService {
     return result;
   }
 }
+
+
+

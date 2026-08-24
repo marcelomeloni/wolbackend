@@ -1,6 +1,6 @@
-import { supabase } from '../../lib/supabase';
+﻿import { supabase } from '../../lib/supabase';
 import { z } from 'zod';
-import { createProductFullSchema, productVariantSchema, productImageSchema, productSchema } from './products.schema';
+import { createProductFullSchema, productVariantSchema, productImageSchema, productSchema, productColorSchema, productSizeSchema } from './products.schema';
 
 export class ProductsService {
   static async createProduct(data: z.infer<typeof createProductFullSchema>) {
@@ -247,3 +247,4 @@ export class ProductsService {
     return { success: true };
   }
 }
+

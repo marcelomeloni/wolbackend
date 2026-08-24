@@ -1,6 +1,6 @@
-import { Request, Response } from 'express';
+﻿import { Request, Response } from 'express';
 import { ProductsService } from './products.service';
-import { createProductFullSchema, productVariantSchema, productImageSchema, productSchema } from './products.schema';
+import { createProductFullSchema, productVariantSchema, productImageSchema, productSchema, productColorSchema, productSizeSchema } from './products.schema';
 
 export class ProductsController {
   static async create(req: Request, res: Response) {
@@ -10,7 +10,7 @@ export class ProductsController {
       res.status(201).json(product);
     } catch (error: any) {
       if (error.message === 'SLUG_ALREADY_EXISTS') {
-        res.status(409).json({ error: { code: 'SLUG_ALREADY_EXISTS', message: 'Slug já está em uso' } });
+        res.status(409).json({ error: { code: 'SLUG_ALREADY_EXISTS', message: 'Slug jÃ¡ estÃ¡ em uso' } });
       } else {
         res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: error.errors || error.message } });
       }
@@ -42,7 +42,7 @@ export class ProductsController {
     try {
       const product = await ProductsService.getProductBySlug(req.params.slug as string);
       if (!product) {
-        res.status(404).json({ error: { code: 'PRODUCT_NOT_FOUND', message: 'Produto não encontrado' } });
+        res.status(404).json({ error: { code: 'PRODUCT_NOT_FOUND', message: 'Produto nÃ£o encontrado' } });
         return;
       }
       res.json(product);
@@ -150,3 +150,4 @@ export class ProductsController {
     }
   }
 }
+
