@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { CouponsService } from './coupons.service';
-import { couponSchema, validateCouponSchema } from './coupons.schema';
+import { couponSchema, validateCouponSchema, updateCouponSchema } from './coupons.schema';
 
 export class CouponsController {
   static async create(req: Request, res: Response) {
@@ -23,6 +23,35 @@ export class CouponsController {
       res.json(coupons);
     } catch (error: any) {
       res.status(500).json({ error: { code: 'INTERNAL_SERVER_ERROR', message: error.message } });
+    }
+  }
+
+  static async update(req: Request, res: Response) {
+    try {
+      const data = updateCouponSchema.parse(req.body);
+      const coupon = await CouponsService.updateCoupon(req.params.id as string, data);
+      res.json(coupon);
+    } catch (error: any) {
+      if (error.message === 'COUPON_NOT_FOUND') {
+        res.status(404).json({ error: { code: 'COUPON_NOT_FOUND', message: 'Cupom não encontrado' } });
+      } else if (error.message === 'COUPON_ALREADY_EXISTS') {
+        res.status(409).json({ error: { code: 'COUPON_ALREADY_EXISTS', message: 'Já existe um cupom com este código' } });
+      } else {
+        res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: error.errors || error.message } });
+      }
+    }
+  }
+
+  static async remove(req: Request, res: Response) {
+    try {
+      await CouponsService.deleteCoupon(req.params.id as string);
+      res.status(204).send();
+    } catch (error: any) {
+      if (error.message === 'COUPON_NOT_FOUND') {
+        res.status(404).json({ error: { code: 'COUPON_NOT_FOUND', message: 'Cupom não encontrado' } });
+      } else {
+        res.status(500).json({ error: { code: 'INTERNAL_SERVER_ERROR', message: error.message } });
+      }
     }
   }
 

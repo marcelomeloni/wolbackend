@@ -2,6 +2,88 @@
 import { z } from 'zod';
 import { createProductFullSchema, productVariantSchema, productImageSchema, productSchema, productColorSchema, productSizeSchema } from './products.schema';
 
+// Converte o registro bruto do Supabase no contrato consumido pelo frontend.
+// variants[] é o formato-chave: uma entrada por combinação cor+tamanho, com
+// id (para o carrinho/pedido), estoque, preço e imagens frente/verso.
+function mapProductToFrontend(p: any) {
+  const colors = (p.product_colors ?? []).map((c: any) => ({
+    id: c.id,
+    colorName: c.color_name,
+    colorHex: c.color_hex,
+  }));
+  const sizes = (p.product_sizes ?? []).map((s: any) => ({
+    id: s.id,
+    sizeName: s.size_name,
+  }));
+  const images = (p.product_images ?? []).map((img: any) => ({
+    id: img.id,
+    colorId: img.color_id,
+    imageUrl: img.image_url,
+    isMain: img.is_main,
+    displayOrder: img.display_order,
+  }));
+
+  const colorById = new Map(colors.map((c: any) => [c.id, c]));
+  const sizeById = new Map(sizes.map((s: any) => [s.id, s]));
+
+  const imageFor = (colorId: string, order: number) =>
+    images.find((img: any) => img.colorId === colorId && img.displayOrder === order)?.imageUrl ?? null;
+
+  const variants = (p.product_variants ?? []).map((v: any) => {
+    const color = colorById.get(v.color_id) as any;
+    const size = sizeById.get(v.size_id) as any;
+    return {
+      id: v.id,
+      color: v.color_id,
+      colorLabel: color?.colorName ?? null,
+      colorHex: color?.colorHex ?? null,
+      size: size?.sizeName ?? null,
+      stockQuantity: v.stock_quantity,
+      price: v.price_override ?? p.base_price,
+      frontImage: imageFor(v.color_id, 1),
+      backImage: imageFor(v.color_id, 2),
+    };
+  });
+
+  // Fallback: se não houver variants, gera uma entrada por cor (catálogo/vitrine).
+  const colorVariants =
+    variants.length > 0
+      ? variants
+      : colors.map((c: any) => ({
+          id: null,
+          color: c.id,
+          colorLabel: c.colorName,
+          colorHex: c.colorHex,
+          size: null,
+          stockQuantity: null,
+          price: p.base_price,
+          frontImage: imageFor(c.id, 1),
+          backImage: imageFor(c.id, 2),
+        }));
+
+  // "Novo" é derivado da data de cadastro (30 dias) — não existe flag própria
+  // e is_featured é o destaque da vitrine, que é outra coisa.
+  const isNew = p.created_at
+    ? Date.now() - new Date(p.created_at).getTime() < 30 * 24 * 60 * 60 * 1000
+    : false;
+
+  return {
+    id: p.id,
+    slug: p.slug,
+    name: p.name,
+    description: p.description ?? '',
+    price: p.base_price,
+    isFeatured: p.is_featured,
+    isNew,
+    category: p.categories ? { id: p.categories.id, name: p.categories.name } : null,
+    colors,
+    sizes,
+    images,
+    variants: colorVariants,
+    reviews: p.reviews ?? [],
+  };
+}
+
 export class ProductsService {
   static async createProduct(data: z.infer<typeof createProductFullSchema>) {
     const { data: exists } = await supabase.from('products').select('id').eq('slug', data.slug).single();
@@ -18,7 +100,11 @@ export class ProductsService {
       is_active: productData.isActive !== undefined ? productData.isActive : true,
       is_featured: productData.isFeatured !== undefined ? productData.isFeatured : false,
       sales_count: productData.salesCount || 0,
-      view_count: productData.viewCount || 0
+      view_count: productData.viewCount || 0,
+      weight_kg: productData.weightKg ?? null,
+      height_cm: productData.heightCm ?? null,
+      width_cm: productData.widthCm ?? null,
+      length_cm: productData.lengthCm ?? null
     }).select().single();
 
     if (error) throw new Error(error.message);
@@ -44,7 +130,10 @@ export class ProductsService {
 
   static async getProducts(query: any) {
     const { categoryId, search, isFeatured } = query;
-    let dbQuery = supabase.from('products').select('*, product_images(*), categories(*), product_colors(*), product_sizes(*)').eq('is_active', true);
+    let dbQuery = supabase
+      .from('products')
+      .select('*, product_images(*), categories(*), product_colors(*), product_sizes(*), product_variants(*)')
+      .eq('is_active', true);
 
     if (categoryId) dbQuery = dbQuery.eq('category_id', categoryId);
     if (search) dbQuery = dbQuery.ilike('name', `%${search}%`);
@@ -53,23 +142,32 @@ export class ProductsService {
     const { data, error } = await dbQuery.order('created_at', { ascending: false });
     if (error) throw new Error(error.message);
 
-    // Filter only main images for the response
-    return data.map((p: any) => ({
-      ...p,
-      images: p.product_images ? p.product_images.filter((img: any) => img.is_main).map((img: any) => ({
-        ...img,
-        imageUrl: img.image_url,
-        isMain: img.is_main
-      })) : [],
-      colors: p.product_colors ? p.product_colors.map((c: any) => ({
-        ...c,
-        colorName: c.color_name,
-        colorHex: c.color_hex
-      })) : [],
-      sizes: p.product_sizes ? p.product_sizes.map((s: any) => ({
-        ...s,
-        sizeName: s.size_name
-      })) : []
+    return (data ?? []).map(mapProductToFrontend);
+  }
+
+  // Lista completa do painel admin: inclui inativos e traz os campos de gestão
+  // que o contrato público do storefront não expõe.
+  static async getProductsForAdmin() {
+    const { data, error } = await supabase
+      .from('products')
+      .select(
+        '*, product_images(*), categories(*), product_colors(*), product_sizes(*), product_variants(*), reviews(*, users(name))',
+      )
+      .order('created_at', { ascending: false });
+    if (error) throw new Error(error.message);
+
+    return (data ?? []).map((p: any) => ({
+      ...mapProductToFrontend(p),
+      categoryId: p.category_id,
+      isActive: p.is_active,
+      salesCount: p.sales_count,
+      viewCount: p.view_count,
+      weightKg: p.weight_kg,
+      heightCm: p.height_cm,
+      widthCm: p.width_cm,
+      lengthCm: p.length_cm,
+      createdAt: p.created_at,
+      updatedAt: p.updated_at,
     }));
   }
 
@@ -81,41 +179,16 @@ export class ProductsService {
       .single();
 
     if (error && error.code !== 'PGRST116') throw new Error(error.message);
+    if (!product) return null;
 
-    if (product) {
-      supabase.from('products').update({ view_count: product.view_count + 1 }).eq('id', product.id).then();
-      
-      // Map relations to expected frontend format (camelCase)
-      return {
-        ...product,
-        images: product.product_images ? product.product_images.map((img: any) => ({
-          ...img,
-          imageUrl: img.image_url,
-          isMain: img.is_main,
-          colorId: img.color_id
-        })) : [],
-        colors: product.product_colors ? product.product_colors.map((c: any) => ({
-          ...c,
-          colorName: c.color_name,
-          colorHex: c.color_hex
-        })) : [],
-        sizes: product.product_sizes ? product.product_sizes.map((s: any) => ({
-          ...s,
-          sizeName: s.size_name
-        })) : [],
-        variants: product.product_variants ? product.product_variants.map((v: any) => ({
-          ...v,
-          colorId: v.color_id,
-          sizeId: v.size_id,
-          stockQuantity: v.stock_quantity,
-          priceOverride: v.price_override
-        })) : [],
-        category: product.categories,
-        reviews: product.reviews || []
-      };
-    }
+    // incrementa visualização (fire-and-forget)
+    supabase
+      .from('products')
+      .update({ view_count: (product.view_count ?? 0) + 1 })
+      .eq('id', product.id)
+      .then();
 
-    return null;
+    return mapProductToFrontend(product);
   }
 
   static async updateProduct(id: string, data: z.infer<typeof productSchema>) {
@@ -132,6 +205,10 @@ export class ProductsService {
     if (data.isFeatured !== undefined) updatePayload.is_featured = data.isFeatured;
     if (data.salesCount !== undefined) updatePayload.sales_count = data.salesCount;
     if (data.viewCount !== undefined) updatePayload.view_count = data.viewCount;
+    if (data.weightKg !== undefined) updatePayload.weight_kg = data.weightKg;
+    if (data.heightCm !== undefined) updatePayload.height_cm = data.heightCm;
+    if (data.widthCm !== undefined) updatePayload.width_cm = data.widthCm;
+    if (data.lengthCm !== undefined) updatePayload.length_cm = data.lengthCm;
 
     const { data: result, error } = await supabase.from('products').update(updatePayload).eq('id', id).select().single();
     if (error) throw new Error(error.message);

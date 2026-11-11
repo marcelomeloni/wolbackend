@@ -1,4 +1,4 @@
-﻿import { Request, Response } from 'express';
+import { Request, Response } from 'express';
 import { ProductsService } from './products.service';
 import { createProductFullSchema, productVariantSchema, productImageSchema, productSchema, productColorSchema, productSizeSchema } from './products.schema';
 
@@ -10,7 +10,7 @@ export class ProductsController {
       res.status(201).json(product);
     } catch (error: any) {
       if (error.message === 'SLUG_ALREADY_EXISTS') {
-        res.status(409).json({ error: { code: 'SLUG_ALREADY_EXISTS', message: 'Slug jÃ¡ estÃ¡ em uso' } });
+        res.status(409).json({ error: { code: 'SLUG_ALREADY_EXISTS', message: 'Slug já está em uso' } });
       } else {
         res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: error.errors || error.message } });
       }
@@ -38,11 +38,20 @@ export class ProductsController {
     }
   }
 
+  static async listAll(req: Request, res: Response) {
+    try {
+      const products = await ProductsService.getProductsForAdmin();
+      res.json(products);
+    } catch (error: any) {
+      res.status(500).json({ error: { code: 'INTERNAL_SERVER_ERROR', message: error.message } });
+    }
+  }
+
   static async getBySlug(req: Request, res: Response) {
     try {
       const product = await ProductsService.getProductBySlug(req.params.slug as string);
       if (!product) {
-        res.status(404).json({ error: { code: 'PRODUCT_NOT_FOUND', message: 'Produto nÃ£o encontrado' } });
+        res.status(404).json({ error: { code: 'PRODUCT_NOT_FOUND', message: 'Produto não encontrado' } });
         return;
       }
       res.json(product);

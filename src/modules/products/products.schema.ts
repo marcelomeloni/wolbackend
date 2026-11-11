@@ -34,6 +34,11 @@ export const productSchema = z.object({
   isFeatured: z.boolean().default(false),
   salesCount: z.number().optional(),
   viewCount: z.number().optional(),
+  // Peso/dimensões usados na cotação de frete (Melhor Envio).
+  weightKg: z.number().positive().optional().nullable(),
+  heightCm: z.number().positive().optional().nullable(),
+  widthCm: z.number().positive().optional().nullable(),
+  lengthCm: z.number().positive().optional().nullable(),
 });
 
 export const createProductFullSchema = productSchema.extend({

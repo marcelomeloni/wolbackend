@@ -16,7 +16,7 @@ export class ReviewsController {
 
   static async listByProduct(req: Request, res: Response) {
     try {
-      const reviews = await ReviewsService.getProductReviews(req.params.id as string as string);
+      const reviews = await ReviewsService.getProductReviews(req.params.productId as string);
       res.json(reviews);
     } catch (error: any) {
       res.status(500).json({ error: { code: 'INTERNAL_SERVER_ERROR', message: error.message } });

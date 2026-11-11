@@ -35,7 +35,8 @@ export const authMiddleware = (req: Request, res: Response, next: NextFunction):
 };
 
 export const adminMiddleware = (req: Request, res: Response, next: NextFunction): void => {
-  if (req.user?.role !== 'admin' && req.user?.role !== 'ADMIN') {
+  const role = req.user?.role;
+  if (role !== 'admin' && role !== 'ADMIN') {
     res.status(403).json({ error: { code: 'FORBIDDEN', message: 'Admin privileges required' } });
     return;
   }

@@ -1,5 +1,5 @@
-import { supabase } from '../../lib/supabase';
-import bcrypt from 'bcrypt';
+﻿import { supabase } from '../../lib/supabase';
+import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { z } from 'zod';
 import { registerSchema, loginSchema } from './auth.schema';
@@ -52,7 +52,7 @@ export class AuthService {
     const token = jwt.sign(
       { userId: user.id, role: user.role },
       process.env.JWT_SECRET || 'secret',
-      { expiresIn: '2h' }
+      { expiresIn: '7d' }
     );
 
     return { user, token };

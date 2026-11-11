@@ -40,8 +40,6 @@ export class AuthController {
         res.status(401).json({ error: { code: 'UNAUTHORIZED', message: 'User not found in request' } });
         return;
       }
-      // @ts-ignore
-      const { supabase } = await import('../../lib/supabase');
       const { data: user } = await supabase.from('users').select('*').eq('id', req.user.userId).single();
       if (!user) {
         res.status(404).json({ error: { code: 'USER_NOT_FOUND', message: 'User not found' } });
@@ -58,16 +56,16 @@ export class AuthController {
     try {
       if (!req.user) throw new Error('UNAUTHORIZED');
       const { name, phone } = req.body;
-      
-      // @ts-ignore
-      const { supabase } = await import('../../lib/supabase');
-      const { data: user, error } = await supabase.from('users')
+
+      const { data: user, error } = await supabase
+        .from('users')
         .update({ name, phone })
         .eq('id', req.user.userId)
-        .select().single();
-        
+        .select()
+        .single();
+
       if (error) throw new Error(error.message);
-      
+
       const { password_hash, ...userWithoutPassword } = user;
       res.json(userWithoutPassword);
     } catch (error: any) {

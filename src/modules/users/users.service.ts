@@ -2,7 +2,7 @@ import { supabase } from '../../lib/supabase';
 import { z } from 'zod';
 
 export const updateRoleSchema = z.object({
-  role: z.enum(['ADMIN', 'customer'])
+  role: z.enum(['ADMIN', 'CUSTOMER', 'admin', 'customer']).transform((r) => r.toUpperCase()),
 });
 
 export class UsersService {

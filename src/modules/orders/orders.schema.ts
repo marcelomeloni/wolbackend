@@ -1,12 +1,14 @@
 import { z } from 'zod';
 
 export const orderItemSchema = z.object({
+  productVariantId: z.string().uuid().optional().nullable(), // preferencial
   productSlug: z.string(), // e.g. 'every-good'
   productName: z.string(),
   colorName: z.string(),
   sizeName: z.string(),
   quantity: z.number().int().positive(),
-  unitPrice: z.number().positive(),
+  // unitPrice enviado pelo cliente é apenas informativo; o backend recalcula.
+  unitPrice: z.number().positive().optional(),
 });
 
 export const createOrderSchema = z.object({
@@ -15,6 +17,10 @@ export const createOrderSchema = z.object({
   couponCode: z.string().optional().nullable(),
   items: z.array(orderItemSchema).min(1),
   paymentMethod: z.enum(['pix', 'credit_card', 'boleto', 'cartao']),
+  // Opções de frete (P3 - Melhor Envio). Quando ausentes, usa fallback.
+  shippingService: z.string().optional(),
+  shippingCompany: z.string().optional(),
+  shippingAmount: z.number().nonnegative().optional(),
 });
 
 export const updateOrderStatusSchema = z.object({

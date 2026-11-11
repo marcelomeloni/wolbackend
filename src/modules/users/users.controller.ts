@@ -1,4 +1,4 @@
-﻿import { Request, Response } from 'express';
+import { Request, Response } from 'express';
 import { UsersService, updateRoleSchema } from './users.service';
 
 export class UsersController {
@@ -25,7 +25,7 @@ export class UsersController {
     try {
       // Prevent deleting self
       if (req.user && req.user.userId === (req.params.id as string)) {
-        res.status(400).json({ error: { code: 'CANNOT_DELETE_SELF', message: 'VocÃª nÃ£o pode excluir sua prÃ³pria conta.' } });
+        res.status(400).json({ error: { code: 'CANNOT_DELETE_SELF', message: 'Você não pode excluir sua própria conta.' } });
         return;
       }
       await UsersService.deleteUser((req.params.id as string));

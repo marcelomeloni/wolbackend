@@ -14,7 +14,20 @@ if (!supabaseUrl || !supabaseKey) {
 
 const supabase = createClient(supabaseUrl, supabaseKey, { auth: { persistSession: false } });
 
-const productsData = [
+interface SeedProduct {
+  id: string;
+  slug: string;
+  name: string;
+  price: number;
+  description: string;
+  isNew: boolean;
+  weight_kg?: number;
+  height_cm?: number;
+  width_cm?: number;
+  length_cm?: number;
+}
+
+const productsData: SeedProduct[] = [
   { id: '6bcd73a1-ca66-44c4-8de9-4bc3e6ef4284', slug: 'every-good', name: 'Every Good', price: 139.90, description: 'Camiseta oversized premium com estampa exclusiva Every Good. Disponível em preto e branco.', isNew: true },
   { id: '91d0fbf9-3845-44fb-8dc6-cbd04dfecfca', slug: 'god-is-with-you', name: 'God Is With You', price: 139.90, description: 'Camiseta oversized premium com estampa exclusiva God Is With You. Mensagem de fé e propósito.', isNew: false },
   { id: 'feb76983-6f6f-4cb7-a86c-c2ebca21a533', slug: 'bloom-with-grace', name: 'Bloom With Grace', price: 139.90, description: 'Camiseta streetwear Bloom With Grace, estampa floral abstrata. Design minimalista.', isNew: false },
@@ -29,6 +42,14 @@ const variants = [
 ];
 const sizes = ['P', 'M', 'G', 'GG'];
 
+// Peso e dimensões usados na cotação de frete (placeholder — ajuste por produto).
+const SHIPPING_DEFAULTS = {
+  weight_kg: 0.3,
+  height_cm: 5,
+  width_cm: 20,
+  length_cm: 30,
+};
+
 async function runSeed() {
   console.log('Starting seed...');
   let { data: category } = await supabase.from('categories').select('*').eq('slug', 'camisetas').single();
@@ -42,12 +63,21 @@ async function runSeed() {
     if (!insertedProd) {
       const { data: newProd, error: prodErr } = await supabase.from('products').insert({
         id: prod.id, category_id: category.id, name: prod.name, slug: prod.slug,
-        description: prod.description, base_price: prod.price, is_active: true, is_featured: prod.isNew
+        description: prod.description, base_price: prod.price, is_active: true, is_featured: prod.isNew,
+        ...SHIPPING_DEFAULTS
       }).select().single();
       if (prodErr) { console.error('Error prod:', prodErr); continue; }
       insertedProd = newProd;
     } else {
-       await supabase.from('products').update({ name: prod.name, description: prod.description, base_price: prod.price }).eq('id', prod.id);
+       await supabase.from('products')
+        .update({
+          name: prod.name, description: prod.description, base_price: prod.price,
+          weight_kg: prod.weight_kg ?? SHIPPING_DEFAULTS.weight_kg,
+          height_cm: prod.height_cm ?? SHIPPING_DEFAULTS.height_cm,
+          width_cm: prod.width_cm ?? SHIPPING_DEFAULTS.width_cm,
+          length_cm: prod.length_cm ?? SHIPPING_DEFAULTS.length_cm,
+        })
+        .eq('id', prod.id);
     }
     for (const v of variants) {
       let { data: colorData } = await supabase.from('product_colors').select('*').eq('product_id', insertedProd.id).eq('color_name', v.label).single();

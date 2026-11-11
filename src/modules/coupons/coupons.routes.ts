@@ -13,5 +13,7 @@ router.use(adminMiddleware);
 
 router.post('/', CouponsController.create);
 router.get('/', CouponsController.list);
+router.put('/:id', CouponsController.update);
+router.delete('/:id', CouponsController.remove);
 
 export default router;

@@ -6,6 +6,11 @@ import { authMiddleware, adminMiddleware } from '../../middlewares/authMiddlewar
 const router = Router();
 const upload = multer({ storage: multer.memoryStorage() });
 
+// Lista completa do catálogo para o painel (inclui inativos). Precisa vir antes
+// de /:slug e leva os middlewares explícitos, porque o router.use abaixo só
+// protege o que for registrado depois dele.
+router.get('/admin/all', authMiddleware, adminMiddleware, ProductsController.listAll);
+
 // Rotas públicas
 router.get('/', ProductsController.list);
 router.get('/:slug', ProductsController.getBySlug);
